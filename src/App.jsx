@@ -1,24 +1,54 @@
 import { useState } from "react";
+import "./App.css";
 
-export default function App() {
+export default function DigitTrainer() {
   const [tamanho, setTamanho] = useState(5);
   const [modo, setModo] = useState("normal");
-  const [velocidade, setVelocidade] = useState(1); // 1 = normal
-  const [pausa, setPausa] = useState(500); // ms
+  const [velocidade, setVelocidade] = useState(1);
+  const [pausa, setPausa] = useState(500);
 
   const [sequencia, setSequencia] = useState([]);
   const [input, setInput] = useState("");
   const [resultado, setResultado] = useState(null);
+  const [tocando, setTocando] = useState(false);
+  const [mostrarResposta, setMostrarResposta] = useState(false);
 
   function gerarSequencia(n) {
     const nums = Array.from({ length: 10 }, (_, i) => i);
-    const embaralhado = nums.sort(() => Math.random() - 0.5);
-    return embaralhado.slice(0, n);
+    return nums.sort(() => Math.random() - 0.5).slice(0, n);
   }
 
-  function falarNumero(numero) {
+  function gerarSequenciaLetras(tamanho) {
+    const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+    const nums = Array.from({ length: 10 }, (_, i) => i);
+
+    const letrasEscolhidas = letras
+      .sort(() => Math.random() - 0.5)
+      .slice(0, tamanho);
+
+    const numsEscolhidos = nums
+      .sort(() => Math.random() - 0.5)
+      .slice(0, tamanho);
+
+    const intercalado = [];
+    const comecaComLetra = Math.random() < 0.5;
+
+    for (let i = 0; i < tamanho; i++) {
+      if (comecaComLetra) {
+        intercalado.push(letrasEscolhidas[i]);
+        intercalado.push(numsEscolhidos[i]);
+      } else {
+        intercalado.push(numsEscolhidos[i]);
+        intercalado.push(letrasEscolhidas[i]);
+      }
+    }
+
+    return intercalado;
+  }
+
+  function falarNumero(item) {
     return new Promise((resolve) => {
-      const utter = new SpeechSynthesisUtterance(numero.toString());
+      const utter = new SpeechSynthesisUtterance(item.toString());
       utter.rate = velocidade;
       utter.onend = resolve;
       speechSynthesis.speak(utter);
@@ -26,25 +56,35 @@ export default function App() {
   }
 
   async function falarSequencia(seq) {
-    for (let n of seq) {
-      await falarNumero(n);
+    for (let item of seq) {
+      await falarNumero(item);
       await new Promise((r) => setTimeout(r, pausa));
     }
   }
 
   async function iniciar() {
-    const seq = gerarSequencia(tamanho);
+    let seq;
+
+    if (modo === "letras") {
+      seq = gerarSequenciaLetras(tamanho);
+    } else {
+      seq = gerarSequencia(tamanho);
+    }
+
     setSequencia(seq);
     setResultado(null);
     setInput("");
+    setMostrarResposta(false);
+    setTocando(true);
 
     await falarSequencia(seq);
+
+    setTocando(false);
   }
 
   function verificar() {
-    const resposta = input.split("").map(Number);
-    const correto =
-      modo === "invertido" ? [...sequencia].reverse() : sequencia;
+    const resposta = input.toUpperCase().split("");
+    const correto = getCorretoArray();
 
     if (JSON.stringify(resposta) === JSON.stringify(correto)) {
       setResultado("acertou");
@@ -53,78 +93,143 @@ export default function App() {
     }
   }
 
+  function getCorretoArray() {
+    if (modo === "normal") {
+      return sequencia.map(String);
+    }
+    if (modo === "invertido") {
+      return [...sequencia].reverse().map(String);
+    }
+    if (modo === "letras") {
+      const nums = sequencia
+        .filter((x) => !isNaN(x))
+        .map(String)
+        .sort((a, b) => a - b);
+
+      const letras = sequencia
+        .filter((x) => isNaN(x))
+        .map(String)
+        .sort();
+
+      return [...nums, ...letras];
+    }
+    return [];
+  }
+
+  function getCorreto() {
+    return getCorretoArray().join("");
+  }
+
+  function tentarDeNovo() {
+    setResultado(null);
+    setInput("");
+    setMostrarResposta(false);
+  }
+
   return (
-    <div style={{ padding: 20 }}>
-      <h2>Digit Trainer</h2>
+    <div className="app">
+      <div className="card">
+        <div className="header">
+          <h1>Digit Trainer</h1>
+          <p>Treine sua memória auditiva com sequências</p>
+        </div>
 
-      <div>
-        <label>Tamanho: </label>
-        <input
-          type="number"
-          value={tamanho}
-          min={1}
-          max={10}
-          onChange={(e) => setTamanho(Number(e.target.value))}
-        />
-      </div>
+        <div className="grid">
+          <div className="field">
+            <label>Tamanho</label>
+            <input
+              type="number"
+              min={1}
+              max={10}
+              value={tamanho}
+              onChange={(e) => setTamanho(Number(e.target.value))}
+            />
+          </div>
 
-      <div>
-        <label>Modo: </label>
-        <select value={modo} onChange={(e) => setModo(e.target.value)}>
-          <option value="normal">Normal</option>
-          <option value="invertido">Invertido</option>
-        </select>
-      </div>
+          <div className="field">
+            <label>Modo</label>
+            <select value={modo} onChange={(e) => setModo(e.target.value)}>
+              <option value="normal">Normal</option>
+              <option value="invertido">Invertido</option>
+              <option value="letras">Com letras</option>
+            </select>
+          </div>
 
-      <div>
-        <label>Velocidade da fala: </label>
-        <input
-          type="number"
-          step="0.1"
-          value={velocidade}
-          onChange={(e) => setVelocidade(Number(e.target.value))}
-        />
-      </div>
+          <div className="field">
+            <label>Velocidade</label>
+            <input
+              type="number"
+              step="0.1"
+              min="0.1"
+              value={velocidade}
+              onChange={(e) => setVelocidade(Number(e.target.value))}
+            />
+          </div>
 
-      <div>
-        <label>Pausa (ms): </label>
-        <input
-          type="number"
-          value={pausa}
-          onChange={(e) => setPausa(Number(e.target.value))}
-        />
-      </div>
+          <div className="field">
+            <label>Pausa (ms)</label>
+            <input
+              type="number"
+              min="0"
+              step="50"
+              value={pausa}
+              onChange={(e) => setPausa(Number(e.target.value))}
+            />
+          </div>
+        </div>
 
-      <button onClick={iniciar}>▶ Ouvir sequência</button>
+        <button
+          className="btn btn-primary"
+          onClick={iniciar}
+          disabled={tocando}
+        >
+          {tocando ? "Reproduzindo…" : "▶ Ouvir sequência"}
+        </button>
 
-      <div style={{ marginTop: 20 }}>
-        <input
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Digite os números"
-        />
-        <button onClick={verificar}>Verificar</button>
-      </div>
-
-      {resultado === "acertou" && <p>✔ Acertou</p>}
-
-      {resultado === "errou" && (
-        <div>
-          <p>✘ Errou</p>
-          <button onClick={verificar}>Tentar de novo</button>
-          <button
-            onClick={() => {
-              const correto =
-                modo === "invertido"
-                  ? [...sequencia].reverse()
-                  : sequencia;
-              alert("Correto: " + correto.join(""));
-            }}
-          >
-            Ver resposta
+        <div className="answer-row">
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Digite a resposta"
+            onKeyDown={(e) => e.key === "Enter" && verificar()}
+          />
+          <button className="btn btn-secondary" onClick={verificar}>
+            Verificar
           </button>
         </div>
-      )}
+
+        {resultado === "acertou" && (
+          <div className="feedback success">
+            <div className="feedback-icon">✓</div>
+            <span>Parabéns, você acertou!</span>
+          </div>
+        )}
+
+        {resultado === "errou" && (
+          <div className="feedback error">
+            <div className="feedback-head">
+              <div className="feedback-icon">✕</div>
+              <span>Resposta incorreta</span>
+            </div>
+
+            {mostrarResposta && (
+              <div className="reveal">{getCorreto()}</div>
+            )}
+
+            <div className="feedback-actions">
+              <button className="btn btn-secondary" onClick={tentarDeNovo}>
+                Tentar de novo
+              </button>
+              <button
+                className="btn btn-ghost"
+                onClick={() => setMostrarResposta(true)}
+              >
+                Ver resposta
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
