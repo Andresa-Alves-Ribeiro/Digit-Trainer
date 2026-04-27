@@ -1,5 +1,42 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import "./App.css";
+
+const DIGITO_POR_EXTENSO = {
+  0: "zero",
+  1: "um",
+  2: "dois",
+  3: "três",
+  4: "quatro",
+  5: "cinco",
+  6: "seis",
+  7: "sete",
+  8: "oito",
+  9: "nove",
+};
+
+function itemParaFala(item) {
+  if (typeof item === "number" && !Number.isNaN(item)) {
+    return DIGITO_POR_EXTENSO[item] ?? String(item);
+  }
+  const s = String(item).trim();
+  if (/^\d$/.test(s)) {
+    return DIGITO_POR_EXTENSO[Number(s)] ?? s;
+  }
+  const letra = s.toUpperCase();
+  if (/^[A-Z]$/.test(letra)) {
+    return letra;
+  }
+  return s;
+}
+
+function obterVozPortugues() {
+  const voices = speechSynthesis.getVoices();
+  return (
+    voices.find((v) => v.lang?.toLowerCase() === "pt-br") ||
+    voices.find((v) => v.lang?.toLowerCase().startsWith("pt")) ||
+    null
+  );
+}
 
 export default function DigitTrainer() {
   const [tamanho, setTamanho] = useState(5);
@@ -12,6 +49,16 @@ export default function DigitTrainer() {
   const [resultado, setResultado] = useState(null);
   const [tocando, setTocando] = useState(false);
   const [mostrarResposta, setMostrarResposta] = useState(false);
+
+  useEffect(() => {
+    function warmVoices() {
+      speechSynthesis.getVoices();
+    }
+    warmVoices();
+    speechSynthesis.addEventListener("voiceschanged", warmVoices);
+    return () =>
+      speechSynthesis.removeEventListener("voiceschanged", warmVoices);
+  }, []);
 
   function gerarSequencia(n) {
     const nums = Array.from({ length: 10 }, (_, i) => i);
@@ -45,18 +92,24 @@ export default function DigitTrainer() {
       .sort(() => Math.random() - 0.5);
   }
 
-  function falarNumero(item) {
+  function falarItem(item) {
     return new Promise((resolve) => {
-      const utter = new SpeechSynthesisUtterance(item.toString());
+      const texto = itemParaFala(item);
+      const utter = new SpeechSynthesisUtterance(texto);
+      utter.lang = "pt-BR";
       utter.rate = velocidade;
+      const voz = obterVozPortugues();
+      if (voz) utter.voice = voz;
       utter.onend = resolve;
+      utter.onerror = () => resolve();
       speechSynthesis.speak(utter);
     });
   }
 
   async function falarSequencia(seq) {
+    speechSynthesis.cancel();
     for (let item of seq) {
-      await falarNumero(item);
+      await falarItem(item);
       await new Promise((r) => setTimeout(r, pausa));
     }
   }
@@ -82,8 +135,17 @@ export default function DigitTrainer() {
   }
 
   function verificar() {
-    const resposta = input.toUpperCase().split("");
+    if (sequencia.length === 0) {
+      return;
+    }
+
+    const resposta = input.trim().toUpperCase().split("");
     const correto = getCorretoArray();
+
+    if (resposta.length === 0 || resposta.length !== correto.length) {
+      setResultado("errou");
+      return;
+    }
 
     if (JSON.stringify(resposta) === JSON.stringify(correto)) {
       setResultado("acertou");
