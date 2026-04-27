@@ -38,6 +38,38 @@ function obterVozPortugues() {
   );
 }
 
+/** Sempre: número–letra–número–… ou letra–número–letra–… (começo aleatório só quando há o mesmo nº de cada). */
+function intercalarNumerosELetras(nums, letras) {
+  if (nums.length === 0) return [...letras];
+  if (letras.length === 0) return [...nums];
+  const out = [];
+  let i = 0;
+  let j = 0;
+  let useNum;
+  if (nums.length > letras.length) {
+    useNum = true;
+  } else if (letras.length > nums.length) {
+    useNum = false;
+  } else {
+    useNum = Math.random() < 0.5;
+  }
+  while (i < nums.length && j < letras.length) {
+    if (useNum) {
+      out.push(nums[i++]);
+    } else {
+      out.push(letras[j++]);
+    }
+    useNum = !useNum;
+  }
+  while (i < nums.length) out.push(nums[i++]);
+  while (j < letras.length) out.push(letras[j++]);
+  return out;
+}
+
+function itemEhDigitoNaSequencia(x) {
+  return typeof x === "number" && Number.isInteger(x) && x >= 0 && x <= 9;
+}
+
 export default function DigitTrainer() {
   const [tamanho, setTamanho] = useState(5);
   const [modo, setModo] = useState("normal");
@@ -73,9 +105,13 @@ export default function DigitTrainer() {
     if (total === 1) {
       numLetras = Math.random() < 0.5 ? 1 : 0;
     } else {
-      const minL = 1;
-      const maxL = total - 1;
-      numLetras = minL + Math.floor(Math.random() * (maxL - minL + 1));
+      if (total % 2 === 0) {
+        numLetras = total / 2;
+      } else {
+        const low = (total - 1) / 2;
+        const high = (total + 1) / 2;
+        numLetras = Math.random() < 0.5 ? low : high;
+      }
     }
     const numNumeros = total - numLetras;
 
@@ -87,28 +123,45 @@ export default function DigitTrainer() {
       .sort(() => Math.random() - 0.5)
       .slice(0, numNumeros);
 
-    return letrasEscolhidas
-      .concat(numsEscolhidos)
-      .sort(() => Math.random() - 0.5);
+    return intercalarNumerosELetras(numsEscolhidos, letrasEscolhidas);
   }
 
   function falarItem(item) {
     return new Promise((resolve) => {
       const texto = itemParaFala(item);
+      if (!texto) {
+        resolve();
+        return;
+      }
       const utter = new SpeechSynthesisUtterance(texto);
       utter.lang = "pt-BR";
-      utter.rate = velocidade;
+      // Chrome fica com a fila presa com rate muito acima de 2
+      utter.rate = Math.min(velocidade, 2);
       const voz = obterVozPortugues();
       if (voz) utter.voice = voz;
-      utter.onend = resolve;
-      utter.onerror = () => resolve();
+
+      let concluiu = false;
+      const finalizar = () => {
+        if (concluiu) return;
+        concluiu = true;
+        clearTimeout(seguranca);
+        resolve();
+      };
+
+      const seguranca = setTimeout(finalizar, 12000);
+
+      utter.addEventListener("end", finalizar, { once: true });
+      utter.addEventListener("error", finalizar, { once: true });
+
       speechSynthesis.speak(utter);
     });
   }
 
   async function falarSequencia(seq) {
     speechSynthesis.cancel();
-    for (let item of seq) {
+    // Imediatamente após cancel(), o 1.º speak() pode ser ignorado no Chrome/Edge
+    await new Promise((r) => setTimeout(r, 80));
+    for (const item of seq) {
       await falarItem(item);
       await new Promise((r) => setTimeout(r, pausa));
     }
@@ -163,12 +216,12 @@ export default function DigitTrainer() {
     }
     if (modo === "letras") {
       const nums = sequencia
-        .filter((x) => !isNaN(x))
+        .filter(itemEhDigitoNaSequencia)
         .map(String)
         .sort((a, b) => a - b);
 
       const letras = sequencia
-        .filter((x) => isNaN(x))
+        .filter((x) => !itemEhDigitoNaSequencia(x))
         .map(String)
         .sort();
 
