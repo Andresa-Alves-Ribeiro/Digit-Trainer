@@ -18,32 +18,31 @@ export default function DigitTrainer() {
     return nums.sort(() => Math.random() - 0.5).slice(0, n);
   }
 
-  function gerarSequenciaLetras(tamanho) {
+  function gerarSequenciaLetras(total) {
     const letras = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
     const nums = Array.from({ length: 10 }, (_, i) => i);
 
+    let numLetras;
+    if (total === 1) {
+      numLetras = Math.random() < 0.5 ? 1 : 0;
+    } else {
+      const minL = 1;
+      const maxL = total - 1;
+      numLetras = minL + Math.floor(Math.random() * (maxL - minL + 1));
+    }
+    const numNumeros = total - numLetras;
+
     const letrasEscolhidas = letras
       .sort(() => Math.random() - 0.5)
-      .slice(0, tamanho);
+      .slice(0, numLetras);
 
     const numsEscolhidos = nums
       .sort(() => Math.random() - 0.5)
-      .slice(0, tamanho);
+      .slice(0, numNumeros);
 
-    const intercalado = [];
-    const comecaComLetra = Math.random() < 0.5;
-
-    for (let i = 0; i < tamanho; i++) {
-      if (comecaComLetra) {
-        intercalado.push(letrasEscolhidas[i]);
-        intercalado.push(numsEscolhidos[i]);
-      } else {
-        intercalado.push(numsEscolhidos[i]);
-        intercalado.push(letrasEscolhidas[i]);
-      }
-    }
-
-    return intercalado;
+    return letrasEscolhidas
+      .concat(numsEscolhidos)
+      .sort(() => Math.random() - 0.5);
   }
 
   function falarNumero(item) {
