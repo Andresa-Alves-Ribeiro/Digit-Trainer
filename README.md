@@ -10,13 +10,13 @@ Aplicação web para treinar **memória auditiva** com sequências de dígitos (
 
 ## 📸 Preview
 
-> Adicione capturas de tela na pasta `docs/images/` e substitua o exemplo abaixo pelo caminho local ou pela URL do asset.
+Tela Principal
 
-<!-- Exemplo após adicionar imagens:
-![Tela principal](docs/images/tela-principal.png)
--->
+<img width="1119" height="802" alt="Captura de tela 2026-05-12 202058" src="https://github.com/user-attachments/assets/d0d79055-dfec-4170-bde9-46807b28baf9" />
 
-*(Preview em breve — veja o projeto com `npm run dev`.)*
+Resposta com Feedback
+
+<img width="1270" height="723" alt="image" src="https://github.com/user-attachments/assets/711692bc-d583-4c4f-b3c0-7ed919655b89" />
 
 ---
 
@@ -141,8 +141,6 @@ Este projeto é de uso **pessoal/educacional**.
 ## 👩‍💻 Autora
 
 Hi! 👋 I'm Andresa Alves Ribeiro, a Front-end/Full-Stack developer and Information Systems student. I love creating solutions to complex problems and am always excited to learn new technologies.
-
-Este projeto (**Digit Trainer**) foi desenvolvido como treino de memória auditiva com React e Vite.
 
 ### Connect with me
 
